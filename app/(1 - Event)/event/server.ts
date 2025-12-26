@@ -47,7 +47,7 @@ export async function GetProducts(event: number) {
             product:products!product_id (
                 id, name, details, image_primary, price, service_fee
             ),
-            sold_data:event_products_sold_quantity (sold_quantity)
+            sold_data:event_products_sold_quantity (sold_quantity, reserved_quantity)
         `
         )
         .eq("event_id", event)
@@ -60,7 +60,10 @@ export async function GetProducts(event: number) {
 
     const productsWithRemaining = products.map((product) => {
         const soldQuantity = product.sold_data?.[0]?.sold_quantity ?? 0;
-        const quantityRemaining = product.quantity - soldQuantity;
+        const reservedQuantity = product.sold_data?.[0]?.reserved_quantity ?? 0;
+        const quantityRemaining =
+            product.quantity - (soldQuantity + reservedQuantity);
+
         const { sold_data, ...rest } = product;
 
         return { ...rest, quantity_remaining: quantityRemaining };
@@ -74,6 +77,7 @@ export type CartItem = {
     event_product_id: number;
     product_id: number;
     quantity: number;
+    ticket_ids: string[];
 };
 
 export async function addItemToCart(formData: FormData) {
@@ -93,16 +97,33 @@ export async function addItemToCart(formData: FormData) {
         throw new Error("Invalid cart item data.");
     }
 
-    CheckAvailableStock(eventId, eventProductId, requestedQuantity);
+    const stock = await CheckAvailableStock(
+        eventId,
+        eventProductId,
+        requestedQuantity
+    );
+
+    if (!stock || !stock.allowed) {
+        throw new Error("Product is no longer available");
+    }
+
+    const reservedTickets = await CreateTickets(
+        eventId,
+        eventProductId,
+        requestedQuantity
+    );
+
+    const ticketIds = reservedTickets.map((t) => t.id);
 
     const newItem: CartItem = {
         event_id: eventId,
         event_product_id: eventProductId,
         product_id: productId,
         quantity: requestedQuantity,
+        ticket_ids: ticketIds,
     };
 
-    const newCart = [newItem];
+    const newCart = [newItem]; // TODO: This is where to replace code if we want to allow a real 'cart' functionality
 
     const cookieStore = cookies();
     (await cookieStore).set("cart", JSON.stringify(newCart), {
@@ -121,25 +142,102 @@ async function CheckAvailableStock(
     requestedQuantity: number
 ) {
     const supabase = await createClient();
-    const { data: eventProductData, error: eventProductError } = await supabase
+
+    const { data: eventProduct, error } = await supabase
         .from("event_products")
         .select(
-            `quantity,
-            sold_data: event_products_sold_quantity (sold_quantity)`
+            `
+            quantity,
+            sold_data: event_products_sold_quantity (
+                sold_quantity,
+                reserved_quantity
+            )
+        `
         )
         .eq("id", eventProductId)
         .single();
 
-    const totalStock = eventProductData?.quantity;
-    const itemsSold = eventProductData?.sold_data?.[0]?.sold_quantity ?? 0;
-    const quantityRemaining = totalStock - itemsSold;
+    if (error || !eventProduct) {
+        console.error("Error fetching stock:", error);
+        return false;
+    }
+
+    const totalCapacity = eventProduct.quantity;
+
+    const soldCount = eventProduct.sold_data?.sold_quantity ?? 0;
+    const reservedCount = eventProduct.sold_data?.reserved_quantity ?? 0;
+
+    // Remaining = Total - (Sold + Reserved)
+    const quantityRemaining = totalCapacity - (soldCount + reservedCount);
 
     if (requestedQuantity > quantityRemaining) {
         console.log(
-            `Stock check failed: Requested ${requestedQuantity}, Remainig ${quantityRemaining}`
+            `Stock check failed: Requested ${requestedQuantity}, Remaining ${quantityRemaining}`
         );
-        // TODO: Show toast explaining error
-        // TODO: Block checkout redirect instead of 'reloading' the page
-        redirect(`/event?id=${eventId}`);
+
+        // Instead of redirecting immediately, return false so the
+        // UI can handle the toast message.
+        return {
+            allowed: false,
+            remaining: quantityRemaining,
+        };
     }
+
+    return { allowed: true };
+}
+
+async function CreateTickets(
+    eventId: number,
+    eventProductId: number,
+    requestedQuantity: number
+) {
+    const supabase = await createClient();
+
+    // 1. Create an array of objects based on the quantity
+    const ticketsToInsert = Array.from({ length: requestedQuantity }).map(
+        () => ({
+            event_product_id: eventProductId,
+            status: "reserved",
+            // reservation_expires_at: new Date(Date.now() + 15 * 60000).toISOString()
+        })
+    );
+
+    // 2. Perform the bulk insert
+    const { data, error } = await supabase
+        .from("tickets")
+        .insert(ticketsToInsert)
+        .select();
+
+    if (error) {
+        console.error("Error creating tickets:", error.message);
+        throw new Error("Could not reserve tickets.");
+    }
+
+    return data;
+}
+
+async function CreateTransactionAndTickets(tickets: CartItem) {
+    // const supabase = await createClient();
+    // // Get product info
+    // const { data: productData, error: productError } = await supabase
+    //     .from("products")
+    //     .select()
+    //     .eq("id", tickets.product_id)
+    //     .maybeSingle();
+    // if (!productData || productError) {
+    //     // Throw error
+    //     console.log(
+    //         "Error retrieving product information to create transaction."
+    //     );
+    // }
+    // const total = (productData.price + productData.service_fee) * tickets.quantity;
+    // // Create transaction as pending
+    // const { error: transactionError } = await supabase.from("transactions").insert({
+    //     total: total
+    // })
+    // // Create line items
+    // // Create tickets
+    // // const {error} = await supabase.from("tickets").insert([
+    // //     {}
+    // // ]);
 }

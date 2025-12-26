@@ -169,8 +169,6 @@ async function EventInfo({
 
     if (!products) return null;
 
-    console.log(products[0].quantity_remaining);
-
     // TODO: See if we should have a '# Remaining' somewhere on the page to push sales
 
     return (

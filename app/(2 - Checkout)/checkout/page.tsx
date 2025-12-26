@@ -33,7 +33,7 @@ export default async function CheckoutPage() {
                 artist={artist}
                 campaign={campaign}
                 product={product}
-                quantity={cart.quantity}
+                cart={cart}
             />
         </>
     );
@@ -45,12 +45,12 @@ async function PageLayout({
     artist,
     campaign,
     product,
-    quantity,
+    cart,
 }: {
     artist: Artist;
     campaign: Campaign;
     product: Product;
-    quantity: number;
+    cart: CartItem;
 }) {
     return (
         <div className={`w-full relative px-4`}>
@@ -73,10 +73,7 @@ async function PageLayout({
                     </div>
                     <div className={`mt-4 flex flex-col md:flex-row`}>
                         <div className={``}>
-                            <ProductColumn
-                                product={product}
-                                quantity={quantity}
-                            />
+                            <ProductColumn product={product} cart={cart} />
                         </div>
                     </div>
                 </div>
@@ -116,16 +113,16 @@ async function getCartFromCookie(): Promise<CartItem[]> {
 
 function ProductColumn({
     product,
-    quantity,
+    cart,
 }: {
     product: Product;
-    quantity: number;
+    cart: CartItem;
 }) {
     return (
         <div className="flex gap-2">
             <div className={`w-1/2 flex flex-col gap-2`}>
                 <div className={`border border-accent rounded-md p-4 md:p-6`}>
-                    <CheckoutForm product={product} quantity={quantity} />
+                    <CheckoutForm product={product} cart={cart} />
                 </div>
             </div>
             <div className={`w-1/2`}>
@@ -165,7 +162,7 @@ function ProductColumn({
                                         <span className="font-bold">
                                             Quantity:
                                         </span>{" "}
-                                        {quantity}
+                                        {cart.quantity}
                                     </p>
                                 </div>
                                 <div
@@ -178,9 +175,10 @@ function ProductColumn({
                                             {`$${
                                                 (product.price +
                                                     product.service_fee) *
-                                                quantity
+                                                cart.quantity
                                             }`}
-                                        </p>
+                                        </p>{" "}
+                                        {/* TODO: Make sure product is defined */}
                                     </div>
                                     <Button
                                         type="submit"

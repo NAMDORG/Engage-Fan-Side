@@ -13,9 +13,8 @@ import { Product } from "@/lib/types/supabase";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import z from "zod";
-import { CreateCheckoutSession } from "./server";
-import { loadStripe } from "@stripe/stripe-js";
-import { stripe } from "@/lib/stripe/stripe";
+import { CreateCheckoutSession, UpdateDatabase } from "./server";
+import { CartItem } from "@/app/(1 - Event)/event/server";
 
 const checkoutSchema = z.object({
     name: z.string().min(2, { message: "Name required." }),
@@ -33,10 +32,10 @@ type CheckoutFormValues = z.infer<typeof checkoutSchema>;
 
 export function CheckoutForm({
     product,
-    quantity,
+    cart,
 }: {
     product: Product;
-    quantity: number;
+    cart: CartItem;
 }) {
     const form = useForm<z.infer<typeof checkoutSchema>>({
         resolver: zodResolver(checkoutSchema),
@@ -56,23 +55,26 @@ export function CheckoutForm({
         //     "Form data is valid. Proceeding to checkout session generation..."
         // );
 
-        if (product.price && product.service_fee && quantity) {
+        if (product.price && product.service_fee && cart.quantity) {
             const calculateOrderAmount =
-                (product.price + product.service_fee) * quantity * 100;
+                (product.price + product.service_fee) * cart.quantity * 100;
             // const clientSecret = await CreateCheckoutSession(calculateOrderAmount);
             // const stripePromise = loadStripe(process.env.STRIPE_PUBLISHABLE_KEY!)
+
+            await UpdateDatabase(values, calculateOrderAmount, cart);
+
             const result = await CreateCheckoutSession(
                 calculateOrderAmount,
                 product,
-                quantity,
+                cart.quantity,
                 window.location.origin
             );
 
-            if (result.url) {
-                window.location.replace(result.url);
-            } else {
-                console.error("Failed to get checkout URL");
-            }
+            // if (result.url) {
+            //     window.location.replace(result.url);
+            // } else {
+            //     console.error("Failed to get checkout URL");
+            // }
         }
     };
 
