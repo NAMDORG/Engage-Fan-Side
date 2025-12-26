@@ -1,41 +1,50 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Bebas_Neue, Figtree } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 
 const defaultUrl = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : "http://localhost:3000";
+    ? `https://${process.env.VERCEL_URL}`
+    : "http://localhost:3000";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(defaultUrl),
-  title: "Next.js and Supabase Starter Kit",
-  description: "The fastest way to build apps with Next.js and Supabase",
+    metadataBase: new URL(defaultUrl),
+    title: "Engage Tix",
+    description: "Empowering Artists, Delighting Fans",
 };
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  display: "swap",
-  subsets: ["latin"],
+const bebasNeue = Bebas_Neue({
+    subsets: ["latin"],
+    variable: "--font-bebas-neue",
+    display: "swap",
+    weight: "400",
+});
+
+const figtree = Figtree({
+    subsets: ["latin"],
+    // Specify the weights you want to load to optimize performance
+    weight: ["300", "400", "600", "700", "900"],
+    variable: "--font-figtree", // Define a CSS variable name
+    display: "swap",
 });
 
 export default function RootLayout({
-  children,
+    children,
 }: Readonly<{
-  children: React.ReactNode;
+    children: React.ReactNode;
 }>) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.className} antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-        </ThemeProvider>
-      </body>
-    </html>
-  );
+    return (
+        <html lang="en" suppressHydrationWarning>
+            <body
+                className={`${figtree.className} ${figtree.variable} ${bebasNeue.variable} antialiased`}>
+                <ThemeProvider
+                    attribute="class"
+                    defaultTheme="system"
+                    enableSystem
+                    disableTransitionOnChange>
+                    {children}
+                </ThemeProvider>
+            </body>
+        </html>
+    );
 }

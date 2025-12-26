@@ -1,0 +1,3 @@
+TODO: Cart function?
+TODO: Login to dashboard / go to profile
+TODO: Loading animation / page transition?
