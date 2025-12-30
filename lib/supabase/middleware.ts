@@ -53,6 +53,7 @@ export async function updateSession(request: NextRequest) {
         !request.nextUrl.pathname.startsWith("/login") &&
         !request.nextUrl.pathname.startsWith("/auth") &&
         !request.nextUrl.pathname.startsWith("/event") &&
+        !request.nextUrl.pathname.startsWith("/cart") &&
         !request.nextUrl.pathname.startsWith("/checkout") &&
         !request.nextUrl.pathname.startsWith("/success")
     ) {

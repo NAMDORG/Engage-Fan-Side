@@ -10,7 +10,7 @@ import SetTheme from "@/lib/set-theme";
 import { Button } from "@/components/ui/button";
 import React from "react";
 
-export default async function CheckoutPage() {
+export default async function CartPage() {
     const headersList = await headers();
     const host = headersList.get("host") || headersList.get("x-forwarded-host");
     const url = host == "localhost:3000" ? "vip.signsoftheswarm.com" : host;
@@ -111,6 +111,8 @@ async function getCartFromCookie(): Promise<CartItem[]> {
     }
 }
 
+// TODO: Catch missing information and redirect
+
 function ProductColumn({
     product,
     cart,
@@ -120,11 +122,6 @@ function ProductColumn({
 }) {
     return (
         <div className="flex gap-2">
-            <div className={`w-1/2 flex flex-col gap-2`}>
-                <div className={`border border-accent rounded-md p-4 md:p-6`}>
-                    <CheckoutForm product={product} cart={cart} />
-                </div>
-            </div>
             <div className={`w-1/2`}>
                 <div className={`w-full md:flex md:gap-2`}>
                     <div
@@ -180,16 +177,15 @@ function ProductColumn({
                                         </p>{" "}
                                         {/* TODO: Make sure product is defined */}
                                     </div>
-                                    <Button
-                                        type="submit"
-                                        form="checkoutForm"
-                                        className="text-2xl font-semibold p-6">
-                                        Complete Purchase
-                                    </Button>
                                 </div>
                             </div>
                         )}
                     </div>
+                </div>
+            </div>
+            <div className={`w-1/2 flex flex-col gap-2`}>
+                <div className={`border border-accent rounded-md p-4 md:p-6`}>
+                    <CheckoutForm product={product} cart={cart} />
                 </div>
             </div>
         </div>

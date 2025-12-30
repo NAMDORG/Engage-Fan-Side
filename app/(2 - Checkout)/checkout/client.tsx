@@ -1,5 +1,18 @@
 "use client";
 
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import z from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+    Elements,
+    PaymentElement,
+    useStripe,
+    useElements,
+} from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
+
 import {
     Form,
     FormControl,
@@ -9,24 +22,39 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Product } from "@/lib/types/supabase";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import z from "zod";
-import { CreateCheckoutSession, UpdateDatabase } from "./server";
 import { CartItem } from "@/app/(1 - Event)/event/server";
+import { CreatePaymentIntent, UpdateDatabase } from "./server";
 
-const checkoutSchema = z.object({
-    name: z.string().min(2, { message: "Name required." }),
-    email_address: z.email(),
-    phone_number: z.string().min(2, { message: "Phone number required." }), // TODO: Replace with phone number validation
-    shipping_address: z
-        .string()
-        .min(2, { message: "Shipping address required." }),
-    shipping_city: z.string().min(2, { message: "Shipping address required." }), // TODO: Replace with separate city, state, zip fields?
-    billing_address: z.string().optional(),
-    billing_city: z.string().optional(),
-});
+const stripePromise = loadStripe(
+    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
+);
+
+const checkoutSchema = z
+    .object({
+        name: z.string().min(2, "Name required."),
+        email_address: z.email("Invalid email."),
+        phone_number: z.string().min(2, "Phone required."),
+        shipping_address: z.string().min(2, "Address required."),
+        shipping_city: z.string().min(2, "City/State/Zip required."),
+        billingSameAsShipping: z.boolean().default(true),
+        billing_address: z.string().optional(),
+        billing_city: z.string().optional(),
+    })
+    .refine(
+        (data) => {
+            if (!data.billingSameAsShipping) {
+                return !!data.billing_address && !!data.billing_city;
+            }
+            return true;
+        },
+        {
+            message: "Billing details required",
+            path: ["billing_address"],
+        }
+    );
 
 type CheckoutFormValues = z.infer<typeof checkoutSchema>;
 
@@ -37,7 +65,11 @@ export function CheckoutForm({
     product: Product;
     cart: CartItem;
 }) {
-    const form = useForm<z.infer<typeof checkoutSchema>>({
+    const [step, setStep] = useState<"info" | "payment">("info");
+    const [clientSecret, setClientSecret] = useState<string>("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const form = useForm<CheckoutFormValues>({
         resolver: zodResolver(checkoutSchema),
         defaultValues: {
             name: "",
@@ -45,191 +77,260 @@ export function CheckoutForm({
             phone_number: "",
             shipping_address: "",
             shipping_city: "",
+            billingSameAsShipping: true,
             billing_address: "",
             billing_city: "",
         },
     });
 
-    const onSubmit = async (values: CheckoutFormValues) => {
-        // console.log(
-        //     "Form data is valid. Proceeding to checkout session generation..."
-        // );
+    const billingSameAsShipping = form.watch("billingSameAsShipping");
 
-        if (product.price && product.service_fee && cart.quantity) {
-            const calculateOrderAmount =
+    const onInfoSubmit = async (values: CheckoutFormValues) => {
+        setIsSubmitting(true);
+        try {
+            const amount =
                 (product.price + product.service_fee) * cart.quantity * 100;
-            // const clientSecret = await CreateCheckoutSession(calculateOrderAmount);
-            // const stripePromise = loadStripe(process.env.STRIPE_PUBLISHABLE_KEY!)
-
-            await UpdateDatabase(values, calculateOrderAmount, cart);
-
-            const result = await CreateCheckoutSession(
-                calculateOrderAmount,
-                product,
-                cart.quantity,
-                window.location.origin
+            const { clientSecret, paymentIntentId } = await CreatePaymentIntent(
+                amount,
+                product
             );
 
-            // if (result.url) {
-            //     window.location.replace(result.url);
-            // } else {
-            //     console.error("Failed to get checkout URL");
-            // }
+            const submissionValues = {
+                ...values,
+                billing_address: values.billingSameAsShipping
+                    ? values.shipping_address
+                    : values.billing_address,
+                billing_city: values.billingSameAsShipping
+                    ? values.shipping_city
+                    : values.billing_city,
+            };
+
+            await UpdateDatabase(
+                submissionValues,
+                amount,
+                cart,
+                paymentIntentId
+            );
+
+            setClientSecret(clientSecret!);
+            setStep("payment");
+        } catch (error) {
+            console.error("Setup failed:", error);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
-    // useEffect(() => {
-    //     if (product.price && product.service_fee && quantity) {
-    //         const calculateOrderAmount =
-    //             (product.price + product.service_fee) * quantity * 100;
-    //         LookForCheckoutSession(calculateOrderAmount);
-    //     }
-    // }, []);
+    return (
+        <div className="w-full">
+            <AnimatePresence mode="wait">
+                {step === "info" ? (
+                    <motion.div
+                        key="info"
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -100 }}
+                        transition={{ duration: 0.3 }}>
+                        <Form {...form}>
+                            <form
+                                onSubmit={form.handleSubmit(onInfoSubmit)}
+                                className="flex flex-col gap-4">
+                                <h2 className="text-xl font-bold uppercase text-accent">
+                                    Contact Information
+                                </h2>
+                                <div className="grid gap-4">
+                                    <CustomField
+                                        form={form}
+                                        name="name"
+                                        label="Full Name"
+                                    />
+                                    <CustomField
+                                        form={form}
+                                        name="email_address"
+                                        label="Email Address"
+                                    />
+                                    <CustomField
+                                        form={form}
+                                        name="phone_number"
+                                        label="Phone Number"
+                                    />
+                                </div>
+
+                                <div className="border border-accent/20 rounded-md p-4 space-y-4">
+                                    <h2 className="text-lg font-bold uppercase">
+                                        Shipping Address
+                                    </h2>
+                                    <CustomField
+                                        form={form}
+                                        name="shipping_address"
+                                        label="Street Address"
+                                    />
+                                    <CustomField
+                                        form={form}
+                                        name="shipping_city"
+                                        label="City, State, & Zip"
+                                    />
+                                </div>
+
+                                <div className="flex items-center space-x-2 py-2">
+                                    <FormField
+                                        control={form.control}
+                                        name="billingSameAsShipping"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                                <FormControl>
+                                                    <Checkbox
+                                                        checked={field.value}
+                                                        onCheckedChange={
+                                                            field.onChange
+                                                        }
+                                                    />
+                                                </FormControl>
+                                                <div className="space-y-1 leading-none">
+                                                    <Label>
+                                                        Billing address is the
+                                                        same as shipping
+                                                    </Label>
+                                                </div>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+
+                                <AnimatePresence>
+                                    {!billingSameAsShipping && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{
+                                                height: "auto",
+                                                opacity: 1,
+                                            }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="overflow-hidden">
+                                            <div className="border border-accent/20 rounded-md p-4 space-y-4 mb-4">
+                                                <h2 className="text-lg font-bold uppercase text-accent">
+                                                    Billing Address
+                                                </h2>
+                                                <CustomField
+                                                    form={form}
+                                                    name="billing_address"
+                                                    label="Street Address"
+                                                />
+                                                <CustomField
+                                                    form={form}
+                                                    name="billing_city"
+                                                    label="City, State, & Zip"
+                                                />
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+
+                                <Button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className="w-full py-6 text-xl">
+                                    {isSubmitting
+                                        ? "Saving..."
+                                        : "Continue to Payment"}
+                                </Button>
+                            </form>
+                        </Form>
+                    </motion.div>
+                ) : (
+                    <motion.div
+                        key="payment"
+                        initial={{ opacity: 0, x: 100 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{
+                            duration: 0.4,
+                            type: "spring",
+                            damping: 25,
+                        }}
+                        className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-2xl font-bold uppercase text-accent">
+                                Payment Details
+                            </h2>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setStep("info")}>
+                                ← Back to Info
+                            </Button>
+                        </div>
+
+                        {clientSecret && (
+                            <Elements
+                                stripe={stripePromise}
+                                options={{
+                                    clientSecret,
+                                    appearance: { theme: "night" },
+                                }}>
+                                <StripeEmbeddedForm />
+                            </Elements>
+                        )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
+
+function CustomField({
+    form,
+    name,
+    label,
+}: {
+    form: any;
+    name: string;
+    label: string;
+}) {
+    return (
+        <FormField
+            control={form.control}
+            name={name}
+            render={({ field }) => (
+                <FormItem>
+                    <Label>{label}</Label>
+                    <FormControl>
+                        <Input className="border-accent" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+            )}
+        />
+    );
+}
+
+function StripeEmbeddedForm() {
+    const stripe = useStripe();
+    const elements = useElements();
+    const [loading, setLoading] = useState(false);
+
+    const handleFinalSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!stripe || !elements) return;
+        setLoading(true);
+        const { error } = await stripe.confirmPayment({
+            elements,
+            confirmParams: { return_url: `${window.location.origin}/success` },
+        });
+        if (error) {
+            console.error(error.message);
+            setLoading(false);
+        }
+    };
 
     return (
-        <Form {...form}>
-            <form
-                id="checkoutForm"
-                onSubmit={form.handleSubmit(onSubmit)}
-                className={`flex flex-col gap-4`}>
-                <div>
-                    <Label>Full Name</Label>
-                    <FormField
-                        control={form.control}
-                        name="name"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormControl>
-                                    <Input
-                                        className="border-accent"
-                                        {...field}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </div>
-                <div>
-                    <Label>Email Address</Label>
-                    <FormField
-                        control={form.control}
-                        name="email_address"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormControl>
-                                    <Input
-                                        className="border-accent"
-                                        {...field}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </div>
-                <div>
-                    <Label>Phone Number</Label>
-                    <FormField
-                        control={form.control}
-                        name="phone_number"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormControl>
-                                    <Input
-                                        className="border-accent"
-                                        {...field}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </div>
-                <div className="flex flex-col gap-2 border border-accent rounded p-4 md:p-6">
-                    <h1 className="text-xl">Shipping Address</h1>
-                    <div>
-                        <Label>Street Address</Label>
-                        <FormField
-                            control={form.control}
-                            name="shipping_address"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormControl>
-                                        <Input
-                                            className="border-accent"
-                                            {...field}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </div>
-                    <div>
-                        <Label>City, State, & Zip</Label>
-                        <FormField
-                            control={form.control}
-                            name="shipping_city"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormControl>
-                                        <Input
-                                            className="border-accent"
-                                            {...field}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </div>
-                </div>
-                <div className="flex flex-col gap-2 border border-accent rounded p-4 md:p-6">
-                    <div>
-                        <h1 className="text-xl">Billing Address</h1>
-                        <p className="p-0 text-xs">
-                            If different from shipping address
-                        </p>
-                    </div>
-                    <div>
-                        <Label>Street Address</Label>
-                        <FormField
-                            control={form.control}
-                            name="billing_address"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormControl>
-                                        <Input
-                                            className="border-accent"
-                                            {...field}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </div>
-                    <div>
-                        <Label>City, State, & Zip</Label>
-                        <FormField
-                            control={form.control}
-                            name="billing_city"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormControl>
-                                        <Input
-                                            className="border-accent"
-                                            {...field}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </div>
-                </div>
-            </form>
-        </Form>
+        <form onSubmit={handleFinalSubmit} className="flex flex-col gap-6">
+            <PaymentElement />
+            <Button
+                disabled={!stripe || loading}
+                className="w-full py-8 text-2xl font-bold">
+                {loading ? "Processing..." : "Complete Purchase"}
+            </Button>
+        </form>
     );
 }

@@ -24,32 +24,6 @@ export async function GetProductFromCookie(productId: number) {
     return { product };
 }
 
-// export async function LookForCheckoutSession(amount: number) {
-//     const cookieStore = cookies();
-//     const piCookie = (await cookieStore).get("paymentIntent");
-
-//     if (piCookie) {
-//         console.log("Stored payment intent:", piCookie);
-//     } else {
-//         console.log("Creating payment intent.");
-
-//         const clientSecret = await CreateCheckoutSession(amount);
-//         if (!clientSecret) {
-//             console.error("Failed to create payment intent.");
-//         } else {
-//             (await cookieStore).set("paymentIntent", clientSecret, {
-//                 path: "/",
-//                 maxAge: 60 * 15, // 15 minutes
-//                 httpOnly: true,
-//                 sameSite: "lax",
-//             });
-//             console.log(clientSecret);
-//         }
-//     }
-// }
-
-// const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
 export async function CreateCheckoutSession(
     calculateOrderAmount: number,
     product: Product,
@@ -87,9 +61,21 @@ export async function CreateCheckoutSession(
         mode: "payment",
         success_url: `${origin}/success`,
     });
-    // console.log(session);
 
-    return { url: session.url };
+    return { url: session.url, session_id: session.id };
+}
+
+export async function CreatePaymentIntent(amount: number, product: Product) {
+    const paymentIntent = await stripe.paymentIntents.create({
+        amount,
+        currency: "usd",
+        automatic_payment_methods: { enabled: true },
+    });
+
+    return {
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id,
+    };
 }
 
 export async function UpdateDatabase(
@@ -103,7 +89,8 @@ export async function UpdateDatabase(
         billing_city?: string | undefined;
     },
     total: number,
-    cart: CartItem
+    cart: CartItem,
+    pi_id: string
 ) {
     const supabase = await createClient();
 
@@ -135,12 +122,22 @@ export async function UpdateDatabase(
         profileId = profileData.id;
     }
 
-    const transactionData: any = {
+    const transactionData: {
+        profile_id: string;
+        total: number;
+        status: string;
+        shipping_street: string;
+        shipping_city: string;
+        billing_street?: string;
+        billing_city?: string;
+        payment_intent_id?: string;
+    } = {
         profile_id: profileId,
         total: total,
         status: "pending",
         shipping_street: formValues.shipping_address,
         shipping_city: formValues.shipping_city,
+        payment_intent_id: pi_id,
     };
 
     if (formValues.billing_address) {
@@ -150,16 +147,12 @@ export async function UpdateDatabase(
         transactionData.billing_city = formValues.billing_city;
     }
 
-    console.log(transactionData);
-
     // Create transaction
     const { data: newTransaction, error: transactionError } = await supabase
         .from("transactions")
         .insert(transactionData)
         .select("id")
         .single();
-
-    console.log("Transaction ID: ", newTransaction?.id);
 
     // Create line_items
     const { data: newLineItem, error: lineItemError } = await supabase
@@ -170,7 +163,18 @@ export async function UpdateDatabase(
             event_product_id: cart.event_product_id,
             quantity: cart.quantity,
             // TODO: price at purchase
-        });
+        })
+        .select("id")
+        .single();
 
-    // Update tickets with line_item_id and profile_id
+    // Update tickets with line_item and profile info
+    const ticketUpdateInfo = {
+        line_item_id: newLineItem?.id,
+        profile_id: profileId,
+    };
+
+    const { data: updatedTickets, error: ticketUpdateError } = await supabase
+        .from("tickets")
+        .update(ticketUpdateInfo)
+        .in("id", cart.ticket_ids);
 }
