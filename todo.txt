@@ -1,3 +1,4 @@
 TODO: Cart function?
 TODO: Login to dashboard / go to profile
 TODO: Loading animation / page transition?
+TODO: price_at_purchase in line_items table

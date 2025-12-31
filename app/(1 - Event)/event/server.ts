@@ -5,6 +5,7 @@ import { Event, Product, Venue } from "@/lib/types/supabase";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { toast } from "sonner";
 
 export async function GetEvent(
     id: number
@@ -58,6 +59,8 @@ export async function GetProducts(event: number) {
         return { products: null };
     }
 
+    // TODO: Sold Out Status!!!
+
     const productsWithRemaining = products.map((product) => {
         const soldQuantity = product.sold_data?.[0]?.sold_quantity ?? 0;
         const reservedQuantity = product.sold_data?.[0]?.reserved_quantity ?? 0;
@@ -80,61 +83,118 @@ export type CartItem = {
     ticket_ids: string[];
 };
 
-export async function addItemToCart(formData: FormData) {
+export async function addItemToCart(prevState: any, formData: FormData) {
     const eventId = Number(formData.get("eventId"));
     const eventProductId = Number(formData.get("eventProductId"));
     const productId = Number(formData.get("productId"));
     const requestedQuantity = Number(formData.get("quantity"));
 
-    // TODO: Better error handling for invalid product/quantity
-    if (
-        isNaN(eventId) ||
-        isNaN(eventProductId) ||
-        isNaN(productId) ||
-        isNaN(requestedQuantity) ||
-        requestedQuantity < 1
-    ) {
-        throw new Error("Invalid cart item data.");
-    }
-
+    // 1. Re-run stock check on the server (the "Double Check")
     const stock = await CheckAvailableStock(
         eventId,
         eventProductId,
         requestedQuantity
     );
 
+    // If stock is insufficient, RETURN immediately.
+    // Do NOT create tickets and do NOT redirect.
     if (!stock || !stock.allowed) {
-        throw new Error("Product is no longer available");
+        return {
+            error: `Sorry, that quantity is unavailable. Please try again or reload the page.`,
+        };
     }
 
-    const reservedTickets = await CreateTickets(
-        eventId,
-        eventProductId,
-        requestedQuantity
-    );
+    try {
+        // 2. Only if allowed, create the reserved tickets
+        const reservedTickets = await CreateTickets(
+            eventId,
+            eventProductId,
+            requestedQuantity
+        );
 
-    const ticketIds = reservedTickets.map((t) => t.id);
+        const ticketIds = reservedTickets.map((t) => t.id);
 
-    const newItem: CartItem = {
-        event_id: eventId,
-        event_product_id: eventProductId,
-        product_id: productId,
-        quantity: requestedQuantity,
-        ticket_ids: ticketIds,
-    };
+        const newItem: CartItem = {
+            event_id: eventId,
+            event_product_id: eventProductId,
+            product_id: productId,
+            quantity: requestedQuantity,
+            ticket_ids: ticketIds,
+        };
 
-    const newCart = [newItem]; // TODO: This is where to replace code if we want to allow a real 'cart' functionality
+        const cookieStore = await cookies();
+        cookieStore.set("cart", JSON.stringify([newItem]), {
+            path: "/",
+            maxAge: 60 * 15,
+            httpOnly: true,
+            sameSite: "lax",
+        });
 
-    const cookieStore = cookies();
-    (await cookieStore).set("cart", JSON.stringify(newCart), {
-        path: "/",
-        maxAge: 60 * 60 * 24 * 7, // 1 week
-        httpOnly: true,
-        sameSite: "lax",
-    });
+        console.log(newItem);
 
-    redirect("/checkout");
+        // 3. Return success to trigger the client-side redirect
+        return { success: true };
+    } catch (e) {
+        console.error(e);
+        return { error: "Failed to reserve tickets. Please try again." };
+    }
 }
+
+// export async function addItemToCart(formData: FormData) {
+//     const eventId = Number(formData.get("eventId"));
+//     const eventProductId = Number(formData.get("eventProductId"));
+//     const productId = Number(formData.get("productId"));
+//     const requestedQuantity = Number(formData.get("quantity"));
+
+//     // TODO: Better error handling for invalid product/quantity
+//     if (
+//         isNaN(eventId) ||
+//         isNaN(eventProductId) ||
+//         isNaN(productId) ||
+//         isNaN(requestedQuantity) ||
+//         requestedQuantity < 1
+//     ) {
+//         throw new Error("Invalid cart item data.");
+//     }
+
+//     const stock = await CheckAvailableStock(
+//         eventId,
+//         eventProductId,
+//         requestedQuantity
+//     );
+
+//     if (!stock || !stock.allowed) {
+//         toast.success("That quantity is not available.");
+//     } else {
+//         const reservedTickets = await CreateTickets(
+//             eventId,
+//             eventProductId,
+//             requestedQuantity
+//         );
+
+//         const ticketIds = reservedTickets.map((t) => t.id);
+
+//         const newItem: CartItem = {
+//             event_id: eventId,
+//             event_product_id: eventProductId,
+//             product_id: productId,
+//             quantity: requestedQuantity,
+//             ticket_ids: ticketIds,
+//         };
+
+//         const newCart = [newItem]; // TODO: This is where to replace code if we want to allow a real 'cart' functionality
+
+//         const cookieStore = cookies();
+//         (await cookieStore).set("cart", JSON.stringify(newCart), {
+//             path: "/",
+//             maxAge: 60 * 60 * 24 * 7, // 1 week
+//             httpOnly: true,
+//             sameSite: "lax",
+//         });
+
+//         redirect("/checkout");
+//     }
+// }
 
 async function CheckAvailableStock(
     eventId: number,
@@ -186,6 +246,8 @@ async function CheckAvailableStock(
     return { allowed: true };
 }
 
+// TODO: price_at_purchase in line_items table
+
 async function CreateTickets(
     eventId: number,
     eventProductId: number,
@@ -214,30 +276,4 @@ async function CreateTickets(
     }
 
     return data;
-}
-
-async function CreateTransactionAndTickets(tickets: CartItem) {
-    // const supabase = await createClient();
-    // // Get product info
-    // const { data: productData, error: productError } = await supabase
-    //     .from("products")
-    //     .select()
-    //     .eq("id", tickets.product_id)
-    //     .maybeSingle();
-    // if (!productData || productError) {
-    //     // Throw error
-    //     console.log(
-    //         "Error retrieving product information to create transaction."
-    //     );
-    // }
-    // const total = (productData.price + productData.service_fee) * tickets.quantity;
-    // // Create transaction as pending
-    // const { error: transactionError } = await supabase.from("transactions").insert({
-    //     total: total
-    // })
-    // // Create line items
-    // // Create tickets
-    // // const {error} = await supabase.from("tickets").insert([
-    // //     {}
-    // // ]);
 }

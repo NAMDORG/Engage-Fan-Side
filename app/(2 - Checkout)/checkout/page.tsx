@@ -7,10 +7,8 @@ import { GetProductFromCookie } from "./server";
 import { CheckoutForm } from "./client";
 import { Separator } from "@/components/ui/separator";
 import SetTheme from "@/lib/set-theme";
-import { Button } from "@/components/ui/button";
-import React from "react";
 
-export default async function CartPage() {
+export default async function CheckoutPage() {
     const headersList = await headers();
     const host = headersList.get("host") || headersList.get("x-forwarded-host");
     const url = host == "localhost:3000" ? "vip.signsoftheswarm.com" : host;

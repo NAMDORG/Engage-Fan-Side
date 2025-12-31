@@ -133,7 +133,7 @@ export async function UpdateDatabase(
         payment_intent_id?: string;
     } = {
         profile_id: profileId,
-        total: total,
+        total: total / 100,
         status: "pending",
         shipping_street: formValues.shipping_address,
         shipping_city: formValues.shipping_city,
