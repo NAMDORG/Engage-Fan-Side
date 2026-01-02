@@ -80,6 +80,7 @@ async function PageLayout({
     );
 }
 
+// TODO: Refactor
 function Background({ background }: { background: string | undefined }) {
     return (
         <div className={`absolute inset-0 z-0 min-h-screen h-dvh`}>

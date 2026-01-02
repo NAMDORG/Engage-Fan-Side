@@ -1,17 +1,19 @@
 import Header from "@/components/header";
 import { GetArtist, GetEvents, GetVenues } from "./server";
-import { headers } from "next/headers"; // Correct import
+import { headers } from "next/headers";
 import { Artist, Campaign, Event, Venue } from "@/lib/types/supabase";
 import Image from "next/image";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { setThemeColors } from "@/lib/set-theme";
+import { GetProducts } from "../(1 - Event)/event/server";
+import { ProductsResponse } from "../(1 - Event)/event/page";
 
 export default async function Home() {
     const headersList = await headers();
     const host = headersList.get("host") || headersList.get("x-forwarded-host");
-    const url = host == "localhost:3000" ? "vip.signsoftheswarm.com" : host;
+    const url = host == "localhost:3001" ? "vip.chaosandcarnage.com" : host;
 
     if (url == null) return null;
 
@@ -84,9 +86,9 @@ function CampaignHeader({
         <div className={`w-full flex flex-col`}>
             <div
                 className={`h-[40vh] w-full relative flex flex-col items-center`}>
-                {artist.logo && (
+                {campaign.logo && (
                     <Image
-                        src={artist.logo}
+                        src={campaign.logo}
                         alt="Artist Logo"
                         fill
                         style={{ objectFit: "contain" }}
@@ -150,13 +152,22 @@ async function EventList({ campaign }: { campaign: number }) {
     );
 }
 
-function EventRow({
+async function EventRow({
     event,
     venue,
 }: {
     event: Event;
     venue: Venue | undefined;
 }) {
+    const response = (await GetProducts(
+        event.id
+    )) as unknown as ProductsResponse;
+    const products = response.products;
+    const availablePackages = products.reduce(
+        (total, product) => total + product.quantity_remaining,
+        0
+    );
+
     return (
         <TableRow className="odd:bg-muted/60 border-none h-16 w-full">
             <TableCell className="w-1/7 px-4">{event.date}</TableCell>
@@ -176,9 +187,17 @@ function EventRow({
                     </Link>
                 )}
                 {/* TODO: Count available VIP and hide conditionally */}
-                <Link href={`/event?id=${event.id}`}>
-                    <Button variant="default">Get VIP</Button>
-                </Link>
+                {availablePackages > 0 ? (
+                    <Link href={`/event?id=${event.id}`}>
+                        <Button className="w-24" variant="default">
+                            Get VIP
+                        </Button>
+                    </Link>
+                ) : (
+                    <Button className="w-24" disabled>
+                        Sold Out
+                    </Button>
+                )}
             </TableCell>
         </TableRow>
     );

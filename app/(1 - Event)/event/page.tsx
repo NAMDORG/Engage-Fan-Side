@@ -146,6 +146,10 @@ export type ProductWidget = {
     quantity_remaining: number;
 };
 
+export type ProductsResponse = {
+    products: ProductWidget[];
+};
+
 async function EventInfo({
     artist,
     campaign,
@@ -157,10 +161,6 @@ async function EventInfo({
     event: Event;
     venue: Venue | null;
 }) {
-    type ProductsResponse = {
-        products: ProductWidget[];
-    };
-
     const response = (await GetProducts(
         event.id
     )) as unknown as ProductsResponse;

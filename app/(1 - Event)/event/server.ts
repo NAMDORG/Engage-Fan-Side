@@ -208,7 +208,7 @@ async function CheckAvailableStock(
         .select(
             `
             quantity,
-            sold_data: event_products_sold_quantity (
+            sold_data: event_products_sold_quantity!inner (
                 sold_quantity,
                 reserved_quantity
             )
@@ -223,12 +223,16 @@ async function CheckAvailableStock(
     }
 
     const totalCapacity = eventProduct.quantity;
-
-    const soldCount = eventProduct.sold_data?.sold_quantity ?? 0;
-    const reservedCount = eventProduct.sold_data?.reserved_quantity ?? 0;
+    const soldCount = eventProduct.sold_data?.[0]?.sold_quantity ?? 0;
+    const reservedCount = eventProduct.sold_data?.[0]?.reserved_quantity ?? 0;
 
     // Remaining = Total - (Sold + Reserved)
     const quantityRemaining = totalCapacity - (soldCount + reservedCount);
+
+    // console.log(
+    //     `Remaining: ${quantityRemaining}`,
+    //     `Requested: ${requestedQuantity}`
+    // );
 
     if (requestedQuantity > quantityRemaining) {
         console.log(
