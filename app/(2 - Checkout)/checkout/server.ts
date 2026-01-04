@@ -24,46 +24,38 @@ export async function GetProductFromCookie(productId: number) {
     return { product };
 }
 
-export async function CreateCheckoutSession(
-    calculateOrderAmount: number,
-    product: Product,
-    quantity: number,
-    origin: string
-) {
-    // const { client_secret: clientSecret } = await stripe.paymentIntents.create({
-    //     amount: amount,
-    //     currency: "usd",
-    //     automatic_payment_methods: { enabled: true },
-    //     metadata: {},
-    // });
+// export async function CreateCheckoutSession(
+//     calculateOrderAmount: number,
+//     product: Product,
+//     quantity: number,
+//     origin: string
+// ) {
+//     const session = await stripe.checkout.sessions.create({
+//         line_items: [
+//             {
+//                 price_data: {
+//                     currency: "usd",
+//                     unit_amount: (product.price + product.service_fee) * 100,
+//                     product_data: {
+//                         name: product.name,
+//                         metadata: {
+//                             id: product.id,
+//                             artist: product.artist,
+//                         },
+//                     },
+//                 },
+//                 quantity: quantity,
+//             },
+//         ],
+//         metadata: {
+//             // TODO: Add purchase metadata
+//         },
+//         mode: "payment",
+//         success_url: `${origin}/success`,
+//     });
 
-    // return clientSecret;
-    const session = await stripe.checkout.sessions.create({
-        line_items: [
-            {
-                price_data: {
-                    currency: "usd",
-                    unit_amount: (product.price + product.service_fee) * 100,
-                    product_data: {
-                        name: product.name,
-                        metadata: {
-                            id: product.id,
-                            artist: product.artist,
-                        },
-                    },
-                },
-                quantity: quantity,
-            },
-        ],
-        metadata: {
-            // TODO: Add purchase metadata
-        },
-        mode: "payment",
-        success_url: `${origin}/success`,
-    });
-
-    return { url: session.url, session_id: session.id };
-}
+//     return { url: session.url, session_id: session.id };
+// }
 
 export async function CreatePaymentIntent(amount: number, product: Product) {
     const paymentIntent = await stripe.paymentIntents.create({
