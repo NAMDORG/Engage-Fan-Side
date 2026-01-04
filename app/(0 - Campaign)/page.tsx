@@ -1,6 +1,5 @@
 import Header from "@/components/header";
 import { GetArtist, GetEvents, GetVenues } from "./server";
-import { headers } from "next/headers";
 import { Artist, Campaign, Event, Venue } from "@/lib/types/supabase";
 import Image from "next/image";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
@@ -9,14 +8,10 @@ import Link from "next/link";
 import { setThemeColors } from "@/lib/set-theme";
 import { GetProducts } from "../(1 - Event)/event/server";
 import { ProductsResponse } from "../(1 - Event)/event/page";
+import { getActiveDomain } from "@/lib/get-domain";
 
 export default async function Home() {
-    const headersList = await headers();
-    const host = headersList.get("host") || headersList.get("x-forwarded-host");
-    const url = host == "localhost:3001" ? "vip.chaosandcarnage.com" : host;
-
-    if (url == null) return null;
-
+    const url = await getActiveDomain();
     const { artist, campaign } = await GetArtist(url);
 
     if (!artist || !campaign) return null;
