@@ -87,37 +87,37 @@ export function CheckoutForm({
 
     const onInfoSubmit = async (values: CheckoutFormValues) => {
         setIsSubmitting(true);
-        try {
-            const amount =
-                (product.price + product.service_fee) * cart.quantity * 100;
-            const { clientSecret, paymentIntentId } = await CreatePaymentIntent(
-                amount,
-                product
-            );
+        if (product.price && product.service_fee) {
+            try {
+                const amount =
+                    (product.price + product.service_fee) * cart.quantity * 100;
+                const { clientSecret, paymentIntentId } =
+                    await CreatePaymentIntent(amount, product);
 
-            const submissionValues = {
-                ...values,
-                billing_address: values.billingSameAsShipping
-                    ? values.shipping_address
-                    : values.billing_address,
-                billing_city: values.billingSameAsShipping
-                    ? values.shipping_city
-                    : values.billing_city,
-            };
+                const submissionValues = {
+                    ...values,
+                    billing_address: values.billingSameAsShipping
+                        ? values.shipping_address
+                        : values.billing_address,
+                    billing_city: values.billingSameAsShipping
+                        ? values.shipping_city
+                        : values.billing_city,
+                };
 
-            await UpdateDatabase(
-                submissionValues,
-                amount,
-                cart,
-                paymentIntentId
-            );
+                await UpdateDatabase(
+                    submissionValues,
+                    amount,
+                    cart,
+                    paymentIntentId
+                );
 
-            setClientSecret(clientSecret!);
-            setStep("payment");
-        } catch (error) {
-            console.error("Setup failed:", error);
-        } finally {
-            setIsSubmitting(false);
+                setClientSecret(clientSecret!);
+                setStep("payment");
+            } catch (error) {
+                console.error("Setup failed:", error);
+            } finally {
+                setIsSubmitting(false);
+            }
         }
     };
 
