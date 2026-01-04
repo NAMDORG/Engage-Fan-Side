@@ -15,7 +15,7 @@ export default async function SuccessPage({
     const params = await searchParams;
     const paymentIntent = params.payment_intent as string;
 
-    const url = host == "localhost:3000" ? "vip.signsoftheswarm.com" : host;
+    const url = host == "localhost:3001" ? "vip.chaosandcarnage.com" : host;
 
     // TODO: catch this error. url returning null will break the whole site
     if (url == null) return null;

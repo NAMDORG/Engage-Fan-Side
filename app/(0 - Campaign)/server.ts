@@ -48,14 +48,17 @@ export async function GetEvents(
     const { data: events, error } = await supabase
         .from("events")
         .select()
-        .eq("campaign", campaign)
-        .order("date");
+        .eq("campaign", campaign);
     if (!events || error) {
         console.log(`Error retrieving campaign events: ${error?.message}`);
         return { events: null };
     }
 
-    return { events };
+    const sortedEvents = events.sort((a, b) => {
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+    });
+
+    return { events: sortedEvents };
 }
 
 export async function GetVenues(): Promise<{ venues: Venue[] | null }> {

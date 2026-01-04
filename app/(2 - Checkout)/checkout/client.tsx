@@ -39,7 +39,7 @@ const checkoutSchema = z
         phone_number: z.string().min(2, "Phone required."),
         shipping_address: z.string().min(2, "Address required."),
         shipping_city: z.string().min(2, "City/State/Zip required."),
-        billingSameAsShipping: z.boolean().default(true),
+        billingSameAsShipping: z.boolean().optional().default(true),
         billing_address: z.string().optional(),
         billing_city: z.string().optional(),
     })

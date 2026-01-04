@@ -128,8 +128,6 @@ export function AddToCart({ eventId, product }: AddToCartProps) {
     const router = useRouter();
     const [state, formAction, isPending] = useActionState(addItemToCart, null);
 
-    console.log(product.quantity_remaining);
-
     useEffect(() => {
         // This only triggers if the server returned an error object
         if (state?.error) {

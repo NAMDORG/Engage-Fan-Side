@@ -17,7 +17,7 @@ export default async function EventPage({
 }) {
     const headersList = await headers();
     const host = headersList.get("host") || headersList.get("x-forwarded-host");
-    const url = host == "localhost:3000" ? "vip.signsoftheswarm.com" : host;
+    const url = host == "localhost:3001" ? "vip.chaosandcarnage.com" : host;
 
     const param = await searchParams;
     const eventId = await param?.id;
@@ -105,9 +105,9 @@ function CampaignHeader({
         <div className={`w-full flex flex-col`}>
             <div
                 className={`h-[40vh] w-full relative flex flex-col items-center`}>
-                {artist.logo && (
+                {campaign.logo && (
                     <Image
-                        src={artist.logo}
+                        src={campaign.logo}
                         alt="Artist Logo"
                         fill
                         style={{ objectFit: "contain" }}

@@ -11,7 +11,7 @@ import SetTheme from "@/lib/set-theme";
 export default async function CheckoutPage() {
     const headersList = await headers();
     const host = headersList.get("host") || headersList.get("x-forwarded-host");
-    const url = host == "localhost:3000" ? "vip.signsoftheswarm.com" : host;
+    const url = host == "localhost:3001" ? "vip.chaosandcarnage.com" : host;
     if (url == null) return null;
     const { artist, campaign } = await GetArtist(url);
     const cookie = await getCartFromCookie();
@@ -70,7 +70,7 @@ async function PageLayout({
                         </div>
                     </div>
                     <div className={`mt-4 flex flex-col md:flex-row`}>
-                        <div className={``}>
+                        <div className={`w-full`}>
                             <ProductColumn product={product} cart={cart} />
                         </div>
                     </div>
@@ -120,8 +120,8 @@ function ProductColumn({
     cart: CartItem;
 }) {
     return (
-        <div className="flex gap-2">
-            <div className={`w-1/2`}>
+        <div className="w-full flex flex-col md:flex-row gap-2">
+            <div className={`md:w-1/2`}>
                 <div className={`w-full md:flex md:gap-2`}>
                     <div
                         className={`border border-accent w-full rounded-md p-4 md:p-6`}>
@@ -182,8 +182,9 @@ function ProductColumn({
                     </div>
                 </div>
             </div>
-            <div className={`w-1/2 flex flex-col gap-2`}>
-                <div className={`border border-accent rounded-md p-4 md:p-6`}>
+            <div className={`md:w-1/2 flex flex-col gap-2`}>
+                <div
+                    className={`w-full border border-accent rounded-md p-4 md:p-6`}>
                     <CheckoutForm product={product} cart={cart} />
                 </div>
             </div>

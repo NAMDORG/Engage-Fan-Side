@@ -203,17 +203,19 @@ async function CheckAvailableStock(
 ) {
     const supabase = await createClient();
 
+    console.log(eventProductId);
+
     const { data: eventProduct, error } = await supabase
         .from("event_products")
         .select(
             `
-            quantity,
-            sold_data: event_products_sold_quantity!inner (
-                sold_quantity,
-                reserved_quantity
-            )
-        `
+        quantity,
+        sold_data: event_products_sold_quantity (
+            sold_quantity,
+            reserved_quantity
         )
+    `
+        ) // Removed !inner
         .eq("id", eventProductId)
         .single();
 
@@ -229,10 +231,7 @@ async function CheckAvailableStock(
     // Remaining = Total - (Sold + Reserved)
     const quantityRemaining = totalCapacity - (soldCount + reservedCount);
 
-    // console.log(
-    //     `Remaining: ${quantityRemaining}`,
-    //     `Requested: ${requestedQuantity}`
-    // );
+    console.log(quantityRemaining);
 
     if (requestedQuantity > quantityRemaining) {
         console.log(
