@@ -134,7 +134,7 @@ function ProductColumn({
                                     <div
                                         className="list-disc px-5"
                                         dangerouslySetInnerHTML={{
-                                            __html: product.details,
+                                            __html: product.details ?? "",
                                         }}
                                     />
                                 </>
@@ -168,11 +168,13 @@ function ProductColumn({
                                             Total cost
                                         </p>
                                         <p className="text-2xl">
-                                            {`$${
-                                                (product.price +
-                                                    product.service_fee) *
-                                                cart.quantity
-                                            }`}
+                                            {product.price &&
+                                                product.service_fee &&
+                                                `$${
+                                                    (product.price +
+                                                        product.service_fee) *
+                                                    cart.quantity
+                                                }`}
                                         </p>{" "}
                                         {/* TODO: Make sure product is defined */}
                                     </div>
