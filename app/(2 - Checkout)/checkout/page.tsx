@@ -7,12 +7,10 @@ import { GetProductFromCookie } from "./server";
 import { CheckoutForm } from "./client";
 import { Separator } from "@/components/ui/separator";
 import SetTheme from "@/lib/set-theme";
+import { getActiveDomain } from "@/lib/get-domain";
 
 export default async function CheckoutPage() {
-    const headersList = await headers();
-    const host = headersList.get("host") || headersList.get("x-forwarded-host");
-    const url = host == "localhost:3001" ? "vip.chaosandcarnage.com" : host;
-    if (url == null) return null;
+    const url = await getActiveDomain();
     const { artist, campaign } = await GetArtist(url);
     const cookie = await getCartFromCookie();
 

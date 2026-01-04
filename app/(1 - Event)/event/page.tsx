@@ -9,15 +9,14 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { AddToCart } from "./client";
 import SetTheme from "@/lib/set-theme";
+import { getActiveDomain } from "@/lib/get-domain";
 
 export default async function EventPage({
     searchParams,
 }: {
     searchParams?: { [key: string]: string | string[] | undefined };
 }) {
-    const headersList = await headers();
-    const host = headersList.get("host") || headersList.get("x-forwarded-host");
-    const url = host == "localhost:3001" ? "vip.chaosandcarnage.com" : host;
+    const url = await getActiveDomain();
 
     const param = await searchParams;
     const eventId = await param?.id;
