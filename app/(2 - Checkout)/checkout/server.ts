@@ -20,7 +20,6 @@ export async function GetProductFromCookie(productId: number) {
     }
 
     // TODO: Verify product info
-
     return { product };
 }
 
@@ -79,6 +78,7 @@ export async function UpdateDatabase(
         shipping_city: string;
         billing_address?: string | undefined;
         billing_city?: string | undefined;
+        item_sizes?: string[];
     },
     total: number,
     cart: CartItem,
@@ -160,13 +160,29 @@ export async function UpdateDatabase(
         .single();
 
     // Update tickets with line_item and profile info
-    const ticketUpdateInfo = {
-        line_item_id: newLineItem?.id,
-        profile_id: profileId,
-    };
+    // const ticketUpdateInfo = {
+    //     line_item_id: newLineItem?.id,
+    //     profile_id: profileId,
+    // };
 
-    const { data: updatedTickets, error: ticketUpdateError } = await supabase
-        .from("tickets")
-        .update(ticketUpdateInfo)
-        .in("id", cart.ticket_ids);
+    // const { data: updatedTickets, error: ticketUpdateError } = await supabase
+    //     .from("tickets")
+    //     .update(ticketUpdateInfo)
+    //     .in("id", cart.ticket_ids);
+    const updatePromises = cart.ticket_ids.map((ticketId, index) => {
+        return supabase
+            .from("tickets")
+            .update({
+                line_item_id: newLineItem?.id,
+                profile_id: profileId,
+                item_size: formValues.item_sizes?.[index] || null, // Access size by index
+            })
+            .eq("id", ticketId);
+    });
+
+    const results = await Promise.all(updatePromises);
+
+    // Check for errors in any of the updates
+    const firstError = results.find((r) => r.error);
+    if (firstError) throw firstError.error;
 }

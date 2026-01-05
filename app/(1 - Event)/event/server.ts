@@ -130,8 +130,6 @@ export async function addItemToCart(prevState: any, formData: FormData) {
             sameSite: "lax",
         });
 
-        console.log(newItem);
-
         // 3. Return success to trigger the client-side redirect
         return { success: true };
     } catch (e) {
@@ -203,8 +201,6 @@ async function CheckAvailableStock(
 ) {
     const supabase = await createClient();
 
-    console.log(eventProductId);
-
     const { data: eventProduct, error } = await supabase
         .from("event_products")
         .select(
@@ -230,8 +226,6 @@ async function CheckAvailableStock(
 
     // Remaining = Total - (Sold + Reserved)
     const quantityRemaining = totalCapacity - (soldCount + reservedCount);
-
-    console.log(quantityRemaining);
 
     if (requestedQuantity > quantityRemaining) {
         console.log(

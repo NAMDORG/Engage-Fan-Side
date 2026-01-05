@@ -84,6 +84,7 @@ type Product = {
     image_primary?: string; // Image URL
     price?: number; // int2
     service_fee?: number; // int2
+    requires_size?: boolean;
 };
 
 type Event_Product = {
