@@ -17,9 +17,9 @@ export default function Header() {
                 />
             </div>
             {/* TODO: Swap sign in to sign out when signed in. */}
-            <Link href="/auth/login/">
+            {/* <Link href="/auth/login/">
                 <p className="uppercase">Sign In</p>
-            </Link>
+            </Link> */}
         </div>
     );
 }

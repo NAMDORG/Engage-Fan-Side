@@ -49,10 +49,11 @@ async function PageLayout({
     cart: CartItem;
 }) {
     return (
-        <div className={`w-full relative px-4`}>
+        <div
+            className={`w-full relative p-2 md:px-4 flex justify-center md:block`}>
             <Background background={campaign.background} />
             <div
-                className={`absolute z-10 w-full min-h-screen p-8 flex flex-col justify-center items-center`}>
+                className={`absolute z-10 md:w-full min-h-screen md:p-8 flex flex-col justify-center items-center`}>
                 <div
                     className={`max-w-screen-xl w-full p-4 md:p-8 bg-background border border-accent rounded-md`}>
                     <div className={`h-full flex justify-between`}>

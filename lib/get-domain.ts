@@ -6,7 +6,11 @@ export async function getActiveDomain() {
         headersList.get("x-forwarded-host") || headersList.get("host") || "";
 
     // If it's local or Vercel preview, return your primary dev domain
-    if (host.includes("localhost") || host.includes("vercel.app")) {
+    if (
+        host.includes("localhost") ||
+        host.includes("192.168.0.7") ||
+        host.includes("vercel.app")
+    ) {
         return "vip.chaosandcarnage.com";
     }
 

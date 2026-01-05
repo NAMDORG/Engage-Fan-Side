@@ -139,6 +139,8 @@ export function AddToCart({ eventId, product }: AddToCartProps) {
         }
     }, [state, router]);
 
+    // TODO: Fix awkward responsiveness @ ~822px wide
+
     return (
         <form action={formAction}>
             {/* Hidden Inputs */}
@@ -147,12 +149,12 @@ export function AddToCart({ eventId, product }: AddToCartProps) {
             <input type="hidden" name="productId" value={product.product.id} />
             <input type="hidden" name="quantity" value={quantity} />
 
-            <div className="bg-accent w-full h-12 flex justify-center items-center">
-                <div className="flex w-full px-2">
+            <div className="bg-accent w-full md:h-12 flex justify-center items-center">
+                <div className="flex flex-col md:flex-row pt-2 md:pt-0 w-full px-2">
                     {product.quantity_remaining > 0 ? (
-                        <>
+                        <div className="flex flex-col md:flex-row gap-2 md:gap-8">
                             <div className="rounded bg-white flex">
-                                <div className="w-64 flex justify-between gap-2">
+                                <div className="w-full md:w-64 flex justify-between gap-2">
                                     <Button
                                         type="button"
                                         variant="ghost"
@@ -184,15 +186,20 @@ export function AddToCart({ eventId, product }: AddToCartProps) {
                                 </div>
                             </div>
 
-                            <button
-                                type="submit"
-                                disabled={isPending}
-                                className="text-background w-1/2 flex items-center disabled:opacity-50">
-                                <h1 className="font-heading text-2xl pl-8 text-foreground">
-                                    {isPending ? "Checking..." : "Add To Cart"}
-                                </h1>
-                            </button>
-                        </>
+                            <div
+                                className={`w-full flex items-center justify-center pb-1 md:pb-0`}>
+                                <button
+                                    type="submit"
+                                    disabled={isPending}
+                                    className="text-background flex items-center disabled:opacity-50">
+                                    <h1 className="font-heading text-2xl text-foreground">
+                                        {isPending
+                                            ? "Checking..."
+                                            : "Add To Cart"}
+                                    </h1>
+                                </button>
+                            </div>
+                        </div>
                     ) : (
                         <div className="w-full h-full flex justify-center items-center">
                             <h3 className="pt-1 font-heading text-3xl">
