@@ -173,12 +173,12 @@ export function CheckoutForm({
                                                             </FormControl>
                                                             <SelectContent>
                                                                 {[
-                                                                    "XS",
                                                                     "SM",
                                                                     "MD",
                                                                     "LG",
                                                                     "XL",
                                                                     "2XL",
+                                                                    "3XL",
                                                                 ].map((s) => (
                                                                     <SelectItem
                                                                         key={s}
