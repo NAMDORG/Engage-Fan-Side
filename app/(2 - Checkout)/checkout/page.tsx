@@ -7,12 +7,10 @@ import { GetProductFromCookie } from "./server";
 import { CheckoutForm } from "./client";
 import { Separator } from "@/components/ui/separator";
 import SetTheme from "@/lib/set-theme";
+import { getActiveDomain } from "@/lib/get-domain";
 
 export default async function CheckoutPage() {
-    const headersList = await headers();
-    const host = headersList.get("host") || headersList.get("x-forwarded-host");
-    const url = host == "localhost:3000" ? "vip.signsoftheswarm.com" : host;
-    if (url == null) return null;
+    const url = await getActiveDomain();
     const { artist, campaign } = await GetArtist(url);
     const cookie = await getCartFromCookie();
 
@@ -51,10 +49,11 @@ async function PageLayout({
     cart: CartItem;
 }) {
     return (
-        <div className={`w-full relative px-4`}>
+        <div
+            className={`w-full relative p-2 md:px-4 flex justify-center md:block`}>
             <Background background={campaign.background} />
             <div
-                className={`absolute z-10 w-full min-h-screen p-8 flex flex-col justify-center items-center`}>
+                className={`absolute z-10 md:w-full min-h-screen md:p-8 flex flex-col justify-center items-center`}>
                 <div
                     className={`max-w-screen-xl w-full p-4 md:p-8 bg-background border border-accent rounded-md`}>
                     <div className={`h-full flex justify-between`}>
@@ -70,7 +69,7 @@ async function PageLayout({
                         </div>
                     </div>
                     <div className={`mt-4 flex flex-col md:flex-row`}>
-                        <div className={``}>
+                        <div className={`w-full`}>
                             <ProductColumn product={product} cart={cart} />
                         </div>
                     </div>
@@ -120,8 +119,8 @@ function ProductColumn({
     cart: CartItem;
 }) {
     return (
-        <div className="flex gap-2">
-            <div className={`w-1/2`}>
+        <div className="w-full flex flex-col md:flex-row gap-2">
+            <div className={`md:w-1/2`}>
                 <div className={`w-full md:flex md:gap-2`}>
                     <div
                         className={`border border-accent w-full rounded-md p-4 md:p-6`}>
@@ -134,7 +133,7 @@ function ProductColumn({
                                     <div
                                         className="list-disc px-5"
                                         dangerouslySetInnerHTML={{
-                                            __html: product.details,
+                                            __html: product.details ?? "",
                                         }}
                                     />
                                 </>
@@ -168,11 +167,13 @@ function ProductColumn({
                                             Total cost
                                         </p>
                                         <p className="text-2xl">
-                                            {`$${
-                                                (product.price +
-                                                    product.service_fee) *
-                                                cart.quantity
-                                            }`}
+                                            {product.price &&
+                                                product.service_fee &&
+                                                `$${
+                                                    (product.price +
+                                                        product.service_fee) *
+                                                    cart.quantity
+                                                }`}
                                         </p>{" "}
                                         {/* TODO: Make sure product is defined */}
                                     </div>
@@ -182,8 +183,9 @@ function ProductColumn({
                     </div>
                 </div>
             </div>
-            <div className={`w-1/2 flex flex-col gap-2`}>
-                <div className={`border border-accent rounded-md p-4 md:p-6`}>
+            <div className={`md:w-1/2 flex flex-col gap-2`}>
+                <div
+                    className={`w-full border border-accent rounded-md p-4 md:p-6`}>
                     <CheckoutForm product={product} cart={cart} />
                 </div>
             </div>

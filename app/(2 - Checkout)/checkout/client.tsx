@@ -27,6 +27,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Product } from "@/lib/types/supabase";
 import { CartItem } from "@/app/(1 - Event)/event/server";
 import { CreatePaymentIntent, UpdateDatabase } from "./server";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 const stripePromise = loadStripe(
     process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
@@ -39,9 +46,10 @@ const checkoutSchema = z
         phone_number: z.string().min(2, "Phone required."),
         shipping_address: z.string().min(2, "Address required."),
         shipping_city: z.string().min(2, "City/State/Zip required."),
-        billingSameAsShipping: z.boolean().default(true),
+        billingSameAsShipping: z.boolean(),
         billing_address: z.string().optional(),
         billing_city: z.string().optional(),
+        item_sizes: z.array(z.string()).optional(),
     })
     .refine(
         (data) => {
@@ -80,6 +88,7 @@ export function CheckoutForm({
             billingSameAsShipping: true,
             billing_address: "",
             billing_city: "",
+            item_sizes: Array(cart.quantity).fill("MD"),
         },
     });
 
@@ -87,37 +96,37 @@ export function CheckoutForm({
 
     const onInfoSubmit = async (values: CheckoutFormValues) => {
         setIsSubmitting(true);
-        try {
-            const amount =
-                (product.price + product.service_fee) * cart.quantity * 100;
-            const { clientSecret, paymentIntentId } = await CreatePaymentIntent(
-                amount,
-                product
-            );
+        if (product.price && product.service_fee) {
+            try {
+                const amount =
+                    (product.price + product.service_fee) * cart.quantity * 100;
+                const { clientSecret, paymentIntentId } =
+                    await CreatePaymentIntent(amount, product);
 
-            const submissionValues = {
-                ...values,
-                billing_address: values.billingSameAsShipping
-                    ? values.shipping_address
-                    : values.billing_address,
-                billing_city: values.billingSameAsShipping
-                    ? values.shipping_city
-                    : values.billing_city,
-            };
+                const submissionValues = {
+                    ...values,
+                    billing_address: values.billingSameAsShipping
+                        ? values.shipping_address
+                        : values.billing_address,
+                    billing_city: values.billingSameAsShipping
+                        ? values.shipping_city
+                        : values.billing_city,
+                };
 
-            await UpdateDatabase(
-                submissionValues,
-                amount,
-                cart,
-                paymentIntentId
-            );
+                await UpdateDatabase(
+                    submissionValues,
+                    amount,
+                    cart,
+                    paymentIntentId
+                );
 
-            setClientSecret(clientSecret!);
-            setStep("payment");
-        } catch (error) {
-            console.error("Setup failed:", error);
-        } finally {
-            setIsSubmitting(false);
+                setClientSecret(clientSecret!);
+                setStep("payment");
+            } catch (error) {
+                console.error("Setup failed:", error);
+            } finally {
+                setIsSubmitting(false);
+            }
         }
     };
 
@@ -135,6 +144,58 @@ export function CheckoutForm({
                             <form
                                 onSubmit={form.handleSubmit(onInfoSubmit)}
                                 className="flex flex-col gap-4">
+                                <h2 className="text-xl font-bold uppercase text-accent">
+                                    Item Size(s)
+                                </h2>
+                                {product.requires_size &&
+                                    Array.from(
+                                        { length: cart.quantity },
+                                        (_, index) => (
+                                            <FormField
+                                                key={index}
+                                                control={form.control}
+                                                name={`item_sizes.${index}`} // Use dot notation for array index
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <Label>
+                                                            T-Shirt Size for
+                                                            Package {index + 1}
+                                                        </Label>
+                                                        <Select
+                                                            onValueChange={
+                                                                field.onChange
+                                                            }
+                                                            value={field.value}>
+                                                            <FormControl>
+                                                                <SelectTrigger>
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                {[
+                                                                    "SM",
+                                                                    "MD",
+                                                                    "LG",
+                                                                    "XL",
+                                                                    "2XL",
+                                                                    "3XL",
+                                                                ].map((s) => (
+                                                                    <SelectItem
+                                                                        key={s}
+                                                                        value={
+                                                                            s
+                                                                        }>
+                                                                        {s}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        )
+                                    )}
                                 <h2 className="text-xl font-bold uppercase text-accent">
                                     Contact Information
                                 </h2>

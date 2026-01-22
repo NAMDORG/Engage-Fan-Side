@@ -1,6 +1,5 @@
 import Header from "@/components/header";
 import { GetArtist, GetEvents, GetVenues } from "./server";
-import { headers } from "next/headers";
 import { Artist, Campaign, Event, Venue } from "@/lib/types/supabase";
 import Image from "next/image";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
@@ -9,14 +8,19 @@ import Link from "next/link";
 import { setThemeColors } from "@/lib/set-theme";
 import { GetProducts } from "../(1 - Event)/event/server";
 import { ProductsResponse } from "../(1 - Event)/event/page";
+import { getActiveDomain } from "@/lib/get-domain";
 
 export default async function Home() {
+<<<<<<< HEAD
     const headersList = await headers();
     const host = headersList.get("host") || headersList.get("x-forwarded-host");
     const url = host == "localhost:3000" ? "vip.chaosandcarnage.com" : host;
 
     if (url == null) return null;
 
+=======
+    const url = await getActiveDomain();
+>>>>>>> 175a359d3ce13b460bc310ff9c076291a786f4bf
     const { artist, campaign } = await GetArtist(url);
 
     if (!artist || !campaign) return null;
@@ -106,13 +110,13 @@ function CampaignHeader({
                     />
                 )}
             </div>
-            <div className={`h-[15vh] flex flex-col justify-end`}>
+            <div className={`h-[15vh] px-2 md:px-0 flex flex-col justify-end`}>
                 <div className={`w-full my-2`}>
                     <h1 className="font-heading text-3xl md:text-4xl uppercase">
                         {artist.name} {campaign.name}
                     </h1>
                     <p className="w-full text-xs uppercase pt-1">
-                        * Vip upgrades do not include a show ticket
+                        * VIP upgrades do not include a show ticket
                     </p>
                 </div>
             </div>
@@ -148,6 +152,51 @@ async function EventList({ campaign }: { campaign: number }) {
                         })}
                 </TableBody>
             </Table>
+            <div className={`md:hidden w-full p-2 flex flex-col gap-2`}>
+                {events &&
+                    events.map((event, index) => {
+                        const venue = venues?.find(
+                            (venue: Venue) => venue.id === event.venue
+                        );
+                        return (
+                            <div
+                                key={index}
+                                className={`w-full border border-primary rounded-md p-2`}>
+                                <div
+                                    className={`font-heading text-3xl text-accent`}>
+                                    {venue?.city_state}
+                                </div>
+                                <div className={`font-heading text-2xl`}>
+                                    {venue?.name}
+                                </div>
+                                <div className={``}>
+                                    {event.date} @ {event.time} -{" "}
+                                    <span className="font-bold">
+                                        {event.age
+                                            ? `${event.age}+`
+                                            : `All Ages`}
+                                    </span>
+                                </div>
+                                <div className={`flex gap-2 pt-2`}>
+                                    <Button
+                                        variant="outline"
+                                        className="w-1/2 max-w-64"
+                                        asChild>
+                                        <a href={event.public_url}>
+                                            Get Tickets
+                                        </a>
+                                    </Button>
+
+                                    <Button className="w-1/2 max-w-64" asChild>
+                                        <a href={`/event?id=${event.id}`}>
+                                            Get VIP
+                                        </a>
+                                    </Button>
+                                </div>
+                            </div>
+                        );
+                    })}
+            </div>
         </div>
     );
 }
@@ -195,7 +244,7 @@ async function EventRow({
                     </Link>
                 ) : (
                     <Button className="w-24" disabled>
-                        Sold Out
+                        VIP Sold Out
                     </Button>
                 )}
             </TableCell>

@@ -20,50 +20,41 @@ export async function GetProductFromCookie(productId: number) {
     }
 
     // TODO: Verify product info
-
     return { product };
 }
 
-export async function CreateCheckoutSession(
-    calculateOrderAmount: number,
-    product: Product,
-    quantity: number,
-    origin: string
-) {
-    // const { client_secret: clientSecret } = await stripe.paymentIntents.create({
-    //     amount: amount,
-    //     currency: "usd",
-    //     automatic_payment_methods: { enabled: true },
-    //     metadata: {},
-    // });
+// export async function CreateCheckoutSession(
+//     calculateOrderAmount: number,
+//     product: Product,
+//     quantity: number,
+//     origin: string
+// ) {
+//     const session = await stripe.checkout.sessions.create({
+//         line_items: [
+//             {
+//                 price_data: {
+//                     currency: "usd",
+//                     unit_amount: (product.price + product.service_fee) * 100,
+//                     product_data: {
+//                         name: product.name,
+//                         metadata: {
+//                             id: product.id,
+//                             artist: product.artist,
+//                         },
+//                     },
+//                 },
+//                 quantity: quantity,
+//             },
+//         ],
+//         metadata: {
+//             // TODO: Add purchase metadata
+//         },
+//         mode: "payment",
+//         success_url: `${origin}/success`,
+//     });
 
-    // return clientSecret;
-    const session = await stripe.checkout.sessions.create({
-        line_items: [
-            {
-                price_data: {
-                    currency: "usd",
-                    unit_amount: (product.price + product.service_fee) * 100,
-                    product_data: {
-                        name: product.name,
-                        metadata: {
-                            id: product.id,
-                            artist: product.artist,
-                        },
-                    },
-                },
-                quantity: quantity,
-            },
-        ],
-        metadata: {
-            // TODO: Add purchase metadata
-        },
-        mode: "payment",
-        success_url: `${origin}/success`,
-    });
-
-    return { url: session.url, session_id: session.id };
-}
+//     return { url: session.url, session_id: session.id };
+// }
 
 export async function CreatePaymentIntent(amount: number, product: Product) {
     const paymentIntent = await stripe.paymentIntents.create({
@@ -87,6 +78,7 @@ export async function UpdateDatabase(
         shipping_city: string;
         billing_address?: string | undefined;
         billing_city?: string | undefined;
+        item_sizes?: string[];
     },
     total: number,
     cart: CartItem,
@@ -168,13 +160,29 @@ export async function UpdateDatabase(
         .single();
 
     // Update tickets with line_item and profile info
-    const ticketUpdateInfo = {
-        line_item_id: newLineItem?.id,
-        profile_id: profileId,
-    };
+    // const ticketUpdateInfo = {
+    //     line_item_id: newLineItem?.id,
+    //     profile_id: profileId,
+    // };
 
-    const { data: updatedTickets, error: ticketUpdateError } = await supabase
-        .from("tickets")
-        .update(ticketUpdateInfo)
-        .in("id", cart.ticket_ids);
+    // const { data: updatedTickets, error: ticketUpdateError } = await supabase
+    //     .from("tickets")
+    //     .update(ticketUpdateInfo)
+    //     .in("id", cart.ticket_ids);
+    const updatePromises = cart.ticket_ids.map((ticketId, index) => {
+        return supabase
+            .from("tickets")
+            .update({
+                line_item_id: newLineItem?.id,
+                profile_id: profileId,
+                item_size: formValues.item_sizes?.[index] || null, // Access size by index
+            })
+            .eq("id", ticketId);
+    });
+
+    const results = await Promise.all(updatePromises);
+
+    // Check for errors in any of the updates
+    const firstError = results.find((r) => r.error);
+    if (firstError) throw firstError.error;
 }

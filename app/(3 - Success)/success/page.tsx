@@ -1,5 +1,6 @@
 import { GetArtist } from "@/app/(0 - Campaign)/server";
 import Header from "@/components/header";
+import { getActiveDomain } from "@/lib/get-domain";
 import SetTheme from "@/lib/set-theme";
 import { Artist, Campaign } from "@/lib/types/supabase";
 import { headers } from "next/headers";
@@ -9,16 +10,10 @@ export default async function SuccessPage({
 }: {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-    const headersList = await headers();
-    const host = headersList.get("host") || headersList.get("x-forwarded-host");
+    const url = await getActiveDomain();
 
     const params = await searchParams;
     const paymentIntent = params.payment_intent as string;
-
-    const url = host == "localhost:3000" ? "vip.signsoftheswarm.com" : host;
-
-    // TODO: catch this error. url returning null will break the whole site
-    if (url == null) return null;
 
     const { artist, campaign } = await GetArtist(url);
 

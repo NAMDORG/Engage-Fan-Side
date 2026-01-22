@@ -1,7 +1,6 @@
 import { GetArtist } from "@/app/(0 - Campaign)/server";
 import Header from "@/components/header";
 import { Artist, Campaign, Event, Product, Venue } from "@/lib/types/supabase";
-import { headers } from "next/headers";
 import Image from "next/image";
 import { GetEvent, GetProducts } from "./server";
 import { Separator } from "@/components/ui/separator";
@@ -9,15 +8,14 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { AddToCart } from "./client";
 import SetTheme from "@/lib/set-theme";
+import { getActiveDomain } from "@/lib/get-domain";
 
 export default async function EventPage({
     searchParams,
 }: {
     searchParams?: { [key: string]: string | string[] | undefined };
 }) {
-    const headersList = await headers();
-    const host = headersList.get("host") || headersList.get("x-forwarded-host");
-    const url = host == "localhost:3000" ? "vip.signsoftheswarm.com" : host;
+    const url = await getActiveDomain();
 
     const param = await searchParams;
     const eventId = await param?.id;
@@ -105,9 +103,9 @@ function CampaignHeader({
         <div className={`w-full flex flex-col`}>
             <div
                 className={`h-[40vh] w-full relative flex flex-col items-center`}>
-                {artist.logo && (
+                {campaign.logo && (
                     <Image
-                        src={artist.logo}
+                        src={campaign.logo}
                         alt="Artist Logo"
                         fill
                         style={{ objectFit: "contain" }}
@@ -125,7 +123,7 @@ function CampaignHeader({
                     />
                 )}
             </div>
-            <div className={`h-[15vh] flex flex-col justify-end`}>
+            <div className={`h-[15vh] flex flex-col justify-end px-2`}>
                 <div className={`w-full my-2`}>
                     <h1 className="font-heading text-3xl md:text-4xl uppercase">
                         {artist.name} {campaign.name}
@@ -172,7 +170,7 @@ async function EventInfo({
     // TODO: See if we should have a '# Remaining' somewhere on the page to push sales
 
     return (
-        <div className={`w-full mt-2`}>
+        <div className={`w-full px-2 mt-2`}>
             <div className={`text-white`}>
                 <h2 className="font-heading text-3xl">
                     {venue
@@ -182,12 +180,13 @@ async function EventInfo({
                 <h3 className="font-heading font-light text-2xl">
                     {`${event.date} @ ${event.time}`}
                 </h3>
+                {/* TODO: Make VIP access conditional */}
                 <h3 className="font-heading text-2xl">
                     VIP Access @ {event.vip_time}
                 </h3>
             </div>
-            <div className={`w-full flex gap-4`}>
-                <div className={`w-1/2`}>
+            <div className={`w-full flex flex-col md:flex-row gap-4`}>
+                <div className={`md:w-1/2`}>
                     {products &&
                         products.map((product: ProductWidget) => (
                             <ProductWidget
@@ -221,8 +220,12 @@ function ProductWidget({
         <div
             className={`border border-accent bg-background/80 mb-4 rounded-md`}>
             <div className={`p-4`}>
-                <h1 className="text-2xl tracking-wider">
+                <h1 className="font-heading text-3xl tracking-wider justify-center">
                     {product.product.name}
+                    <span className="text-2xl">
+                        {" "}
+                        - ${product.product.price}
+                    </span>
                 </h1>
                 <div className={`mt-4 md:w-2/3`}>
                     <h2 className="text-xl tracking-wide">Includes</h2>
