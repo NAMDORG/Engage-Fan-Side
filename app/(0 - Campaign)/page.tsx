@@ -13,7 +13,7 @@ import { ProductsResponse } from "../(1 - Event)/event/page";
 export default async function Home() {
     const headersList = await headers();
     const host = headersList.get("host") || headersList.get("x-forwarded-host");
-    const url = host == "localhost:3001" ? "vip.chaosandcarnage.com" : host;
+    const url = host == "localhost:3000" ? "vip.chaosandcarnage.com" : host;
 
     if (url == null) return null;
 
@@ -135,7 +135,7 @@ async function EventList({ campaign }: { campaign: number }) {
                     {events &&
                         events.map((event, index) => {
                             const venue = venues?.find(
-                                (venue: Venue) => venue.id === event.venue
+                                (venue: Venue) => venue.id === event.venue,
                             );
 
                             return (
@@ -160,16 +160,16 @@ async function EventRow({
     venue: Venue | undefined;
 }) {
     const response = (await GetProducts(
-        event.id
+        event.id,
     )) as unknown as ProductsResponse;
     const products = response.products;
     const availablePackages = products.reduce(
         (total, product) => total + product.quantity_remaining,
-        0
+        0,
     );
 
     return (
-        <TableRow className="odd:bg-muted/60 border-none h-16 w-full">
+        <TableRow className="odd:bg-[hsl(0_0%_14.9%/0.5)] border-none h-16 w-full text-secondary-foreground">
             <TableCell className="w-1/7 px-4">{event.date}</TableCell>
             <TableCell className="w-1/7 px-4">{venue?.name}</TableCell>
             <TableCell className="w-1/7 px-4">{venue?.city_state}</TableCell>
