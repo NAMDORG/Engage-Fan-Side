@@ -11,16 +11,7 @@ import { ProductsResponse } from "../(1 - Event)/event/page";
 import { getActiveDomain } from "@/lib/get-domain";
 
 export default async function Home() {
-<<<<<<< HEAD
-    const headersList = await headers();
-    const host = headersList.get("host") || headersList.get("x-forwarded-host");
-    const url = host == "localhost:3000" ? "vip.chaosandcarnage.com" : host;
-
-    if (url == null) return null;
-
-=======
     const url = await getActiveDomain();
->>>>>>> 175a359d3ce13b460bc310ff9c076291a786f4bf
     const { artist, campaign } = await GetArtist(url);
 
     if (!artist || !campaign) return null;
@@ -156,7 +147,7 @@ async function EventList({ campaign }: { campaign: number }) {
                 {events &&
                     events.map((event, index) => {
                         const venue = venues?.find(
-                            (venue: Venue) => venue.id === event.venue
+                            (venue: Venue) => venue.id === event.venue,
                         );
                         return (
                             <div
