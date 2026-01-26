@@ -6,8 +6,10 @@ import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { setThemeColors } from "@/lib/set-theme";
-import { GetProducts } from "../(1 - Event)/event/server";
-import { ProductsResponse } from "../(1 - Event)/event/page";
+import {
+    GetProductsForEvents,
+    ProductWithRemaining,
+} from "../(1 - Event)/event/server";
 import { getActiveDomain } from "@/lib/get-domain";
 
 export default async function Home() {
@@ -123,6 +125,9 @@ async function EventList({ campaign }: { campaign: number }) {
 
     if (!events) return null;
 
+    const eventIds = events.map((event) => event.id);
+    const { productsByEvent } = await GetProductsForEvents(eventIds);
+
     return (
         <div className={`w-full`}>
             <Table className="hidden md:table">
@@ -132,12 +137,21 @@ async function EventList({ campaign }: { campaign: number }) {
                             const venue = venues?.find(
                                 (venue: Venue) => venue.id === event.venue,
                             );
+                            const products =
+                                productsByEvent[event.id] ??
+                                ([] as ProductWithRemaining[]);
+                            const availablePackages = products.reduce(
+                                (total, product) =>
+                                    total + product.quantity_remaining,
+                                0,
+                            );
 
                             return (
                                 <EventRow
                                     key={index}
                                     event={event}
                                     venue={venue}
+                                    availablePackages={availablePackages}
                                 />
                             );
                         })}
@@ -192,35 +206,32 @@ async function EventList({ campaign }: { campaign: number }) {
     );
 }
 
-async function EventRow({
+function EventRow({
     event,
     venue,
+    availablePackages,
 }: {
     event: Event;
     venue: Venue | undefined;
+    availablePackages: number;
 }) {
-    const response = (await GetProducts(
-        event.id,
-    )) as unknown as ProductsResponse;
-    const products = response.products;
-    const availablePackages = products.reduce(
-        (total, product) => total + product.quantity_remaining,
-        0,
-    );
-
     return (
-        <TableRow className="odd:bg-[hsl(0_0%_14.9%/0.5)] border-none h-16 w-full text-secondary-foreground">
-            <TableCell className="w-1/7 px-4">{event.date}</TableCell>
-            <TableCell className="w-1/7 px-4">{venue?.name}</TableCell>
-            <TableCell className="w-1/7 px-4">{venue?.city_state}</TableCell>
-            <TableCell className="w-1/7 px-4">Doors @ {event.time}</TableCell>
-            <TableCell className="w-1/7 px-4">
+        <TableRow className="odd:bg-muted/50 border-none h-16 w-full text-foreground">
+            <TableCell className="px-4">{event.date}</TableCell>
+            <TableCell className="px-4">{venue?.name}</TableCell>
+            <TableCell className="px-4">
+                {venue?.city_state}
+            </TableCell>
+            <TableCell className="px-4">
+                Doors @ {event.time}
+            </TableCell>
+            <TableCell className="px-4">
                 {event.vip_time ? `VIP Access @ ${event.vip_time}` : ""}
             </TableCell>
-            <TableCell className="w-1/7 px-4">
+            <TableCell className="px-4">
                 {event.age ? `${event.age}+` : "All Ages"}
             </TableCell>
-            <TableCell className="h-16 w-1/7 px-4 flex items-center justify-end gap-1">
+            <TableCell className="h-16 px-4 flex items-center justify-end gap-1">
                 {event.public_url && (
                     <Link href={event.public_url}>
                         <Button variant="outline">Get Tickets</Button>

@@ -20,7 +20,15 @@ export async function setThemeColors(colors: {
     cta: string;
 }): Promise<string> {
     let css = ":root {\n";
-    Object.entries(colors).forEach(([key, value]) => {
+    const derivedColors: Record<string, string> = {
+        ...colors,
+        foreground: colors.primary,
+        "primary-foreground": getReadableForeground(colors.primary),
+        "secondary-foreground": getReadableForeground(colors.secondary),
+        "accent-foreground": getReadableForeground(colors.accent),
+        "cta-foreground": getReadableForeground(colors.cta),
+    };
+    Object.entries(derivedColors).forEach(([key, value]) => {
         const hslValue = hexToHSL(value);
         css += `  --${key}: ${hslValue};\n`;
     });
@@ -28,19 +36,58 @@ export async function setThemeColors(colors: {
     return css;
 }
 
+function getReadableForeground(color: string) {
+    const hslValue = hexToHSL(color);
+    const parts = hslValue.split(" ");
+    const lightness = Number.parseFloat((parts[2] || "").replace("%", ""));
+
+    if (!Number.isFinite(lightness)) {
+        return "#FFFFFF";
+    }
+
+    return lightness > 60 ? "#000000" : "#FFFFFF";
+}
+
 export function hexToHSL(hex: string) {
+    const raw = hex.trim();
+    if (raw.length === 0) {
+        return "0 0% 0%";
+    }
+
+    if (raw.startsWith("hsl(") || raw.startsWith("hsla(")) {
+        const inner = raw
+            .replace(/^hsla?\(/, "")
+            .replace(/\)$/, "")
+            .replace(/\s*\/\s*[\d.]+%?\s*$/, "")
+            .replace(/,/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+        return inner || "0 0% 0%";
+    }
+
+    if (/^\d{1,3}\s+\d{1,3}%\s+\d{1,3}%$/.test(raw)) {
+        return raw;
+    }
+
+    let normalized = raw.startsWith("#") ? raw.slice(1) : raw;
+    if (normalized.length === 8) {
+        normalized = normalized.slice(0, 6);
+    }
+
     let r = 0,
         g = 0,
         b = 0;
 
-    if (hex.length === 4) {
-        r = parseInt(hex[1] + hex[1], 16);
-        g = parseInt(hex[2] + hex[2], 16);
-        b = parseInt(hex[3] + hex[3], 16);
-    } else if (hex.length === 7) {
-        r = parseInt(hex[1] + hex[2], 16);
-        g = parseInt(hex[3] + hex[4], 16);
-        b = parseInt(hex[5] + hex[6], 16);
+    if (normalized.length === 3) {
+        r = parseInt(normalized[0] + normalized[0], 16);
+        g = parseInt(normalized[1] + normalized[1], 16);
+        b = parseInt(normalized[2] + normalized[2], 16);
+    } else if (normalized.length === 6) {
+        r = parseInt(normalized[0] + normalized[1], 16);
+        g = parseInt(normalized[2] + normalized[3], 16);
+        b = parseInt(normalized[4] + normalized[5], 16);
+    } else {
+        return "0 0% 0%";
     }
 
     r /= 255;

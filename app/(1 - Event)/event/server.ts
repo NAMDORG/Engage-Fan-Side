@@ -75,6 +75,68 @@ export async function GetProducts(event: number) {
     return { products: productsWithRemaining };
 }
 
+export type ProductWithRemaining = {
+    id: number;
+    quantity: number;
+    product: Product;
+    quantity_remaining: number;
+};
+
+type ProductWithRemainingRow = ProductWithRemaining & { event_id: number };
+
+export async function GetProductsForEvents(eventIds: number[]) {
+    if (eventIds.length === 0) {
+        return { productsByEvent: {} as Record<number, ProductWithRemaining[]> };
+    }
+
+    const supabase = await createClient();
+    const { data: products, error: productsError } = await supabase
+        .from("event_products")
+        .select(
+            `
+            event_id,
+            id,
+            quantity,
+            product:products!product_id (
+                id, name, details, image_primary, price, service_fee
+            ),
+            sold_data:event_products_sold_quantity (sold_quantity, reserved_quantity)
+        `
+        )
+        .in("event_id", eventIds)
+        .order("product(name)");
+
+    if (!products || productsError) {
+        console.log(`Error retrieving products: ${productsError?.message}`);
+        return { productsByEvent: {} as Record<number, ProductWithRemaining[]> };
+    }
+
+    const productsWithRemaining = products.map((product) => {
+        const soldQuantity = product.sold_data?.[0]?.sold_quantity ?? 0;
+        const reservedQuantity = product.sold_data?.[0]?.reserved_quantity ?? 0;
+        const quantityRemaining =
+            product.quantity - (soldQuantity + reservedQuantity);
+
+        const { sold_data, ...rest } = product;
+
+        return { ...rest, quantity_remaining: quantityRemaining };
+    }) as ProductWithRemainingRow[];
+
+    const productsByEvent = productsWithRemaining.reduce(
+        (acc, product) => {
+            const { event_id, ...rest } = product;
+            if (!acc[event_id]) {
+                acc[event_id] = [];
+            }
+            acc[event_id].push(rest);
+            return acc;
+        },
+        {} as Record<number, ProductWithRemaining[]>
+    );
+
+    return { productsByEvent };
+}
+
 export type CartItem = {
     event_id: number;
     event_product_id: number;
