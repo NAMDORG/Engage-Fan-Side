@@ -68,8 +68,17 @@ export async function GetProducts(event: number) {
             product.quantity - (soldQuantity + reservedQuantity);
 
         const { sold_data, ...rest } = product;
+        
+        // Handle the case where product.product might be an array (Supabase can return relations as arrays)
+        const productData = Array.isArray(rest.product) 
+            ? rest.product[0] 
+            : rest.product;
 
-        return { ...rest, quantity_remaining: quantityRemaining };
+        return { 
+            ...rest, 
+            product: productData as Product,
+            quantity_remaining: quantityRemaining 
+        };
     });
 
     return { products: productsWithRemaining };
@@ -118,8 +127,17 @@ export async function GetProductsForEvents(eventIds: number[]) {
             product.quantity - (soldQuantity + reservedQuantity);
 
         const { sold_data, ...rest } = product;
+        
+        // Handle the case where product.product might be an array (Supabase can return relations as arrays)
+        const productData = Array.isArray(rest.product) 
+            ? rest.product[0] 
+            : rest.product;
 
-        return { ...rest, quantity_remaining: quantityRemaining };
+        return { 
+            ...rest, 
+            product: productData as Product,
+            quantity_remaining: quantityRemaining 
+        };
     }) as ProductWithRemainingRow[];
 
     const productsByEvent = productsWithRemaining.reduce(
