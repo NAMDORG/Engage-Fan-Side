@@ -100,9 +100,6 @@ export function CheckoutForm({
             try {
                 const amount =
                     (product.price + product.service_fee) * cart.quantity * 100;
-                const { clientSecret, paymentIntentId } =
-                    await CreatePaymentIntent(amount, product);
-
                 const submissionValues = {
                     ...values,
                     billing_address: values.billingSameAsShipping
@@ -112,6 +109,8 @@ export function CheckoutForm({
                         ? values.shipping_city
                         : values.billing_city,
                 };
+                const { clientSecret, paymentIntentId } =
+                    await CreatePaymentIntent(amount, product, submissionValues, cart);
 
                 await UpdateDatabase(
                     submissionValues,

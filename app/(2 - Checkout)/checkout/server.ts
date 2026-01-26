@@ -56,11 +56,66 @@ export async function GetProductFromCookie(productId: number) {
 //     return { url: session.url, session_id: session.id };
 // }
 
-export async function CreatePaymentIntent(amount: number, product: Product) {
+function buildPaymentMetadata(
+    formValues: {
+        name: string;
+        email_address: string;
+        phone_number: string;
+        shipping_address: string;
+        shipping_city: string;
+        billing_address?: string | undefined;
+        billing_city?: string | undefined;
+        item_sizes?: string[];
+    },
+    product: Product,
+    cart: CartItem
+) {
+    const metadata: Record<string, string> = {
+        name: formValues.name,
+        email_address: formValues.email_address,
+        phone_number: formValues.phone_number,
+        shipping_address: formValues.shipping_address,
+        shipping_city: formValues.shipping_city,
+        product_id: String(product.id),
+        product_name: product.name ?? "",
+        event_product_id: String(cart.event_product_id),
+        quantity: String(cart.quantity),
+        ticket_ids: cart.ticket_ids.join(","),
+    };
+
+    if (formValues.billing_address) {
+        metadata.billing_address = formValues.billing_address;
+    }
+    if (formValues.billing_city) {
+        metadata.billing_city = formValues.billing_city;
+    }
+    if (formValues.item_sizes?.length) {
+        metadata.item_sizes = formValues.item_sizes.join(",");
+    }
+
+    return metadata;
+}
+
+export async function CreatePaymentIntent(
+    amount: number,
+    product: Product,
+    formValues: {
+        name: string;
+        email_address: string;
+        phone_number: string;
+        shipping_address: string;
+        shipping_city: string;
+        billing_address?: string | undefined;
+        billing_city?: string | undefined;
+        item_sizes?: string[];
+    },
+    cart: CartItem
+) {
     const paymentIntent = await stripe.paymentIntents.create({
         amount,
         currency: "usd",
         automatic_payment_methods: { enabled: true },
+        metadata: buildPaymentMetadata(formValues, product, cart),
     });
 
     return {
